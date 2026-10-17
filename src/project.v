@@ -1,10 +1,14 @@
 /*
- * Tiny Tapeout VGA Playground: "Cyber-Outrun: Victory Celebration Edition"
+ * Tiny Tapeout VGA Playground: "Cyber-Outrun 2088 (Ultimate 1x1 Edition)"
  * Features:
- *   - Smooth Acceleration (Button 0) & Braking Dynamics (Button 1)
- *   - Dynamic Headlight Cones & Nitro Afterburners
- *   - Checkered Finish Line & Fireworks / Confetti Victory Celebration!
- *   - Controls: 0=Gas, 1=Brake, 2=Left, 3=Right, 7=Transform
+ *   - Button 0: Gas / Nitro Boost
+ *   - Button 1: Brake
+ *   - Button 2: Steer Left
+ *   - Button 3: Steer Right
+ *   - Button 5: Cyber-Shield (Invincibility Forcefield)
+ *   - Button 6: Police Siren Strobe Lights
+ *   - Button 7: Transform Car <-> Superbike
+ *   - Heavy Side-Impact & Off-Road Score Penalty
  */
 
 `default_nettype none
@@ -36,70 +40,68 @@ module tt_um_vga_example (
         .vpos(vpos)
     );
 
-    // Direct Controls
-    wire gas_pedal   = ui_in[0]; // Button 0: Smooth Acceleration
-    wire brake_pedal = ui_in[1]; // Button 1: Smooth Brake
+    // Controls Mapping
+    wire gas_pedal   = ui_in[0]; // Button 0: Nitro Gas
+    wire brake_pedal = ui_in[1]; // Button 1: Brake
     wire steer_left  = ui_in[2]; // Button 2: Steer Left
     wire steer_right = ui_in[3]; // Button 3: Steer Right
+    wire shield_btn  = ui_in[5]; // Button 5: Cyber-Shield Powerup
+    wire siren_btn   = ui_in[6]; // Button 6: Police Siren Strobe
     wire is_bike     = ui_in[7]; // Button 7: Transform Car <-> Bike
 
     // Road Bounds
     localparam ROAD_L = 10'd200;
     localparam ROAD_R = 10'd440;
 
-    // Game Physics & State Registers
+    // Game Physics & State Registers (Optimized for 1x1 tile)
     reg [9:0] px = 10'd320;
     reg [9:0] py = 10'd380;
-    reg [7:0] speed = 8'd6;      // Velocity: 2 (crawl) to 14 (nitro)
+    reg [3:0] speed = 4'd6;
     reg [9:0] t1_x = 10'd250, t1_y = 10'd60;
     reg [9:0] t2_x = 10'd380, t2_y = 10'd200;
     reg [7:0] road_scroll = 8'd0;
-    reg [15:0] distance = 16'd0; // Distance to Finish Line (Goal: 1000)
+    reg [11:0] distance = 12'd0; // Goal: 1500
     reg [7:0] lfsr = 8'hD5;
-    reg [4:0] crash_flash = 5'd0;
-    reg [6:0] invuln = 7'd60;
-    reg [3:0] flame_anim = 4'd0;
-    reg [5:0] celeb_anim = 6'd0;
-    reg       won_race = 1'b0;   // 1 = VICTORY CELEBRATION!
+    reg [3:0] crash_flash = 4'd0;
+    reg [5:0] invuln = 6'd40;
+    reg [2:0] flame_anim = 3'd0;
+    reg [4:0] celeb_anim = 5'd0;
+    reg       won_race = 1'b0;
     reg       prev_vsync = 1'b0;
 
     // Game Loop (60 FPS on vsync)
     always @(posedge clk) begin
         if (reset) begin
-            px <= 10'd320; py <= 10'd380; speed <= 8'd6;
+            px <= 10'd320; py <= 10'd380; speed <= 4'd6;
             t1_x <= 10'd250; t1_y <= 10'd60;
             t2_x <= 10'd380; t2_y <= 10'd200;
-            road_scroll <= 8'd0; distance <= 16'd0;
-            crash_flash <= 5'd0; invuln <= 7'd60;
-            flame_anim  <= 4'd0; celeb_anim <= 6'd0;
+            road_scroll <= 8'd0; distance <= 12'd0;
+            crash_flash <= 4'd0; invuln <= 6'd40;
+            flame_anim  <= 3'd0; celeb_anim <= 5'd0;
             won_race    <= 1'b0; lfsr <= 8'hD5;
             prev_vsync  <= 1'b0;
         end else begin
             prev_vsync <= vsync;
             if (!prev_vsync && vsync) begin
                 lfsr <= {lfsr[6:0], lfsr[7] ^ lfsr[5] ^ lfsr[4] ^ lfsr[3]};
-                flame_anim <= flame_anim + 4'd1;
+                flame_anim <= flame_anim + 3'd1;
 
-                if (invuln > 0) invuln <= invuln - 7'd1;
-                if (crash_flash > 0) crash_flash <= crash_flash - 5'd1;
+                if (invuln > 0) invuln <= invuln - 6'd1;
+                if (crash_flash > 0) crash_flash <= crash_flash - 4'd1;
 
                 if (!won_race) begin
                     // Acceleration & Braking
-                    if (gas_pedal) begin
-                        if (speed < 8'd14) speed <= speed + 8'd1;
-                    end else if (brake_pedal) begin
-                        if (speed > 8'd2) speed <= speed - 8'd2;
-                    end else begin
-                        if (speed > 8'd6) speed <= speed - 8'd1;
-                        else if (speed < 8'd6) speed <= speed + 8'd1;
+                    if (gas_pedal) begin if (speed < 4'd12) speed <= speed + 4'd1; end
+                    else if (brake_pedal) begin if (speed > 4'd2) speed <= speed - 4'd2; end
+                    else begin
+                        if (speed > 4'd6) speed <= speed - 4'd1;
+                        else if (speed < 4'd6) speed <= speed + 4'd1;
                     end
 
-                    road_scroll <= road_scroll + speed;
-                    distance    <= distance + {8'd0, speed};
+                    road_scroll <= road_scroll + {4'd0, speed};
+                    distance    <= distance + {4'd0, speed};
 
-                    if (distance >= 16'd1000) begin
-                        won_race <= 1'b1; // Trigger Victory Celebration!
-                    end
+                    if (distance >= 12'd1500) won_race <= 1'b1;
 
                     // Steering
                     if (steer_left && px > (ROAD_L - 10'd10))
@@ -108,46 +110,37 @@ module tt_um_vga_example (
                         px <= px + (is_bike ? 10'd5 : 10'd4);
 
                     // Move Traffic Downwards
-                    t1_y <= t1_y + (speed > 8'd3 ? (speed - 8'd2) : 8'd2);
-                    if (t1_y >= 10'd480) begin
-                        t1_y <= 10'd10;
-                        t1_x <= (lfsr[0]) ? 10'd240 : 10'd295;
+                    t1_y <= t1_y + 3;
+                    if (t1_y >= 10'd480) begin t1_y <= 10'd10; t1_x <= lfsr[0] ? 10'd240 : 10'd295; end
+
+                    t2_y <= t2_y + 4;
+                    if (t2_y >= 10'd480) begin t2_y <= 10'd10; t2_x <= lfsr[1] ? 10'd345 : 10'd400; end
+
+                    // HEAVY SIDE-IMPACT / OFF-ROAD PENALTY (Drains score rapidly if you touch walls)
+                    if (!is_bike && (px <= ROAD_L + 10'd4 || px >= ROAD_R - 10'd4)) begin
+                        if (speed > 4'd2) speed <= speed - 4'd2; // Hard brake on wall scrape
+                        if (distance > 12'd15) distance <= distance - 12'd15; // Heavy score drain!
                     end
 
-                    t2_y <= t2_y + (speed > 8'd2 ? (speed - 8'd1) : 8'd3);
-                    if (t2_y >= 10'd480) begin
-                        t2_y <= 10'd10;
-                        t2_x <= (lfsr[1]) ? 10'd345 : 10'd400;
-                    end
-
-                    // Off-road Grass Penalty
-                    if (!is_bike && (px < ROAD_L + 10'd10 || px > ROAD_R - 10'd10)) begin
-                        if (speed > 8'd3) speed <= speed - 8'd1;
-                        if (distance > 16'd2) distance <= distance - 16'd2;
-                    end
-
-                    // Traffic Collision Detection
-                    if (invuln == 0) begin
-                        if (((px + (is_bike ? 10'd6 : 10'd14) > t1_x - 10'd12) &&
-                             (px - (is_bike ? 10'd6 : 10'd14) < t1_x + 10'd12) &&
-                             (py + 10'd14 > t1_y - 10'd16) &&
-                             (py - 10'd14 < t1_y + 10'd16)) ||
-                            ((px + (is_bike ? 10'd6 : 10'd14) > t2_x - 10'd12) &&
-                             (px - (is_bike ? 10'd6 : 10'd14) < t2_x + 10'd12) &&
-                             (py + 10'd14 > t2_y - 10'd16) &&
-                             (py - 10'd14 < t2_y + 10'd16))) begin
-                            crash_flash <= 5'd20;
-                            invuln      <= 7'd60;
-                            speed       <= 8'd3;
-                            distance    <= (distance > 16'd150) ? (distance - 16'd150) : 16'd0;
+                    // Traffic Collision Detection (Bypassed if Cyber-Shield Button 5 is active!)
+                    if (invuln == 0 && !shield_btn) begin
+                        if (((px + (is_bike ? 10'd6 : 10'd12) > t1_x - 10'd10) &&
+                             (px - (is_bike ? 10'd6 : 10'd12) < t1_x + 10'd10) &&
+                             (py + 10'd12 > t1_y - 10'd14) &&
+                             (py - 10'd12 < t1_y + 10'd14)) ||
+                            ((px + (is_bike ? 10'd6 : 10'd12) > t2_x - 10'd10) &&
+                             (px - (is_bike ? 10'd6 : 10'd12) < t2_x + 10'd10) &&
+                             (py + 10'd12 > t2_y - 10'd14) &&
+                             (py - 10'd12 < t2_y + 10'd14))) begin
+                            crash_flash <= 4'd12;
+                            invuln      <= 6'd40;
+                            speed       <= 4'd3;
+                            distance    <= (distance > 12'd150) ? (distance - 12'd150) : 12'd0;
                         end
                     end
                 end else begin
-                    // Victory Celebration Loop
-                    celeb_anim  <= celeb_anim + 6'd1;
+                    celeb_anim  <= celeb_anim + 5'd1;
                     road_scroll <= road_scroll + 8'd4;
-                    t1_y        <= 10'd500;
-                    t2_y        <= 10'd500;
                 end
             end
         end
@@ -155,69 +148,63 @@ module tt_um_vga_example (
 
     // Geometry Rendering
     wire on_road   = (hpos >= ROAD_L && hpos <= ROAD_R);
-    wire on_curb_l = (hpos >= ROAD_L - 10'd12 && hpos < ROAD_L);
-    wire on_curb_r = (hpos > ROAD_R && hpos <= ROAD_R + 10'd12);
+    wire on_curb_l = (hpos >= ROAD_L - 10'd10 && hpos < ROAD_L);
+    wire on_curb_r = (hpos > ROAD_R && hpos <= ROAD_R + 10'd10);
     wire curb_neon = ((vpos + road_scroll) >> 4) & 1'b1;
 
-    // Checkered Finish Line
-    wire on_finish_line = won_race && (vpos >= 10'd120 && vpos <= 10'd140) && on_road;
+    wire on_finish_line = won_race && (vpos >= 10'd120 && vpos <= 10'd135) && on_road;
     wire finish_check   = ((hpos[3] ^ vpos[3]));
 
-    // Dashed Center Lanes
     wire on_lane1 = (hpos >= 10'd278 && hpos <= 10'd282) && (((vpos + road_scroll) >> 5) & 1'b1);
     wire on_lane2 = (hpos >= 10'd358 && hpos <= 10'd362) && (((vpos + road_scroll) >> 5) & 1'b1);
 
-    // Dynamic Headlight Cones
-    wire in_headlight_beam = (vpos < py) && (vpos >= py - 10'd110) &&
+    wire in_headlight_beam = (vpos < py) && (vpos >= py - 10'd100) &&
                             (hpos >= px - ((py - vpos) >> 2) - 10'd10) &&
                             (hpos <= px + ((py - vpos) >> 2) + 10'd10);
 
-    // Roadside Cyberpunk Neon Wireframe Grid
     wire [7:0] grid_y = vpos[7:0] + road_scroll;
     wire is_cyber_grid = ((hpos[4:0] == 5'd0) || (grid_y[4:0] == 5'd0)) && (!on_road);
 
-    // Player Coordinates
     wire blink_hide = (invuln > 0) && invuln[2];
     wire [9:0] pdx = (hpos > px) ? (hpos - px) : (px - hpos);
     wire [9:0] pdy = (vpos > py) ? (vpos - py) : (py - vpos);
 
-    wire is_player_body   = !blink_hide && (is_bike ? (pdx <= 10'd4 && pdy <= 10'd12) : (pdx <= 10'd12 && pdy <= 10'd16));
-    wire is_player_glass  = !blink_hide && (is_bike ? (pdx <= 10'd2 && pdy <= 10'd4)  : (pdx <= 10'd8  && pdy <= 10'd6));
-    wire is_player_wheels = !blink_hide && !is_bike && ((pdx >= 10'd11 && pdx <= 10'd14) && (pdy >= 10'd8 && pdy <= 10'd15));
-    wire is_player_lights = !blink_hide && (pdy >= 10'd15 && pdy <= 10'd17) && (pdx >= 10'd7 && pdx <= 10'd11);
-    wire is_player_brakes = !blink_hide && (vpos >= py + 10'd14 && vpos <= py + 10'd16) && (pdx >= 10'd7 && pdx <= 10'd11);
+    wire is_player_body   = !blink_hide && (is_bike ? (pdx <= 10'd4 && pdy <= 10'd12) : (pdx <= 10'd11 && pdy <= 10'd14));
+    wire is_player_glass  = !blink_hide && (is_bike ? (pdx <= 10'd2 && pdy <= 10'd4)  : (pdx <= 10'd7  && pdy <= 10'd5));
+    wire is_player_wheels = !blink_hide && !is_bike && ((pdx >= 10'd10 && pdx <= 10'd12) && (pdy >= 10'd7 && pdy <= 10'd13));
+    wire is_player_lights = !blink_hide && (pdy >= 10'd13 && pdy <= 10'd15) && (pdx >= 10'd6 && pdx <= 10'd10);
+    wire is_player_brakes = !blink_hide && (vpos >= py + 10'd12 && vpos <= py + 10'd14) && (pdx >= 10'd6 && pdx <= 10'd10);
 
-    // Nitro Flames
-    wire is_nitro_flame = (speed > 8'd7) && 
-                          (vpos >= py + 10'd16 && vpos <= py + 10'd18 + (speed << 1) + (flame_anim[1] ? 10'd4 : 10'd0)) &&
-                          (pdx >= 10'd4 && pdx <= 10'd9);
+    // Cyber-Shield Forcefield Bubble around car when Button 5 is held!
+    wire is_shield_bubble = shield_btn && (pdx <= 10'd16 && pdy <= 10'd18) && (pdx == 10'd16 || pdy == 10'd18);
 
-    // Traffic Cars
+    // Police Siren Strobe Lights on Roof when Button 6 is pressed!
+    wire is_siren_light = siren_btn && (pdy >= 10'd4 && pdy <= 10'd6) && (pdx <= 10'd4) && celeb_anim[0];
+
+    wire is_nitro_flame = (speed > 4'd7) && 
+                          (vpos >= py + 10'd14 && vpos <= py + 10'd18 + (speed << 1)) &&
+                          (pdx >= 10'd3 && pdx <= 10'd8);
+
     wire [9:0] t1_dx = (hpos > t1_x) ? (hpos - t1_x) : (t1_x - hpos);
     wire [9:0] t1_dy = (vpos > t1_y) ? (vpos - t1_y) : (t1_y - vpos);
-    wire is_t1_body  = (t1_dx <= 10'd12 && t1_dy <= 10'd16);
-    wire is_t1_glass = (t1_dx <= 10'd8  && t1_dy <= 10'd6);
+    wire is_t1_body  = (t1_dx <= 10'd11 && t1_dy <= 10'd14);
+    wire is_t1_glass = (t1_dx <= 10'd7  && t1_dy <= 10'd5);
 
     wire [9:0] t2_dx = (hpos > t2_x) ? (hpos - t2_x) : (t2_x - hpos);
     wire [9:0] t2_dy = (vpos > t2_y) ? (vpos - t2_y) : (t2_y - vpos);
-    wire is_t2_body  = (t2_dx <= 10'd12 && t2_dy <= 10'd16);
-    wire is_t2_glass = (t2_dx <= 10'd8  && t2_dy <= 10'd6);
+    wire is_t2_body  = (t2_dx <= 10'd11 && t2_dy <= 10'd14);
+    wire is_t2_glass = (t2_dx <= 10'd7  && t2_dy <= 10'd5);
 
-    // Victory Celebration Elements
     wire [7:0] sparkle_hash = (hpos[7:0] ^ (vpos[7:0] + (celeb_anim << 2)));
-    wire is_firework = won_race && ((sparkle_hash[4:0] == 5'h1F) || (sparkle_hash[5:0] == 6'h2A));
+    wire is_firework = won_race && ((sparkle_hash[4:0] == 5'h1F));
+    wire is_crown = won_race && (vpos >= py - 10'd28 && vpos <= py - 10'd18) && (pdx <= 10'd12);
 
-    wire is_crown = won_race && (vpos >= py - 10'd32 && vpos <= py - 10'd20) &&
-                    (pdx <= 10'd14) && (pdy <= 10'd32) &&
-                    ((vpos == py - 10'd20) || (pdx == 10'd0) || (pdx == 10'd8) || (pdx == 10'd14));
-
-    // Top HUD Progress Meter
     wire on_hud_bar = (vpos >= 10'd10 && vpos <= 10'd18) && 
-                      (hpos >= 10'd220 && hpos <= 10'd220 + (distance >> 2)) &&
+                      (hpos >= 10'd220 && hpos <= 10'd220 + (distance >> 3)) &&
                       (hpos <= 10'd420);
     wire on_hud_box = (vpos >= 10'd8 && vpos <= 10'd20) && (hpos >= 10'd218 && hpos <= 10'd422);
 
-    // 6-bit Color Output Generation
+    // Color Generation
     reg [1:0] R, G, B;
 
     always @(*) begin
@@ -225,10 +212,14 @@ module tt_um_vga_example (
             R = 2'b00; G = 2'b00; B = 2'b00;
         end else if (crash_flash > 0 && (hpos < 10'd10 || hpos > 10'd630)) begin
             R = 2'b11; G = 2'b00; B = 2'b00;
+        end else if (is_shield_bubble) begin
+            R = 2'b00; G = 2'b11; B = 2'b11; // Glowing Cyan Forcefield Bubble
+        end else if (is_siren_light) begin
+            R = celeb_anim[1] ? 2'b11 : 2'b00; // Flashing Police Red/Blue Strobe
+            G = 2'b00;
+            B = celeb_anim[1] ? 2'b00 : 2'b11;
         end else if (is_firework) begin
-            R = celeb_anim[2] ? 2'b11 : 2'b00;
-            G = celeb_anim[3] ? 2'b11 : 2'b11;
-            B = celeb_anim[1] ? 2'b11 : 2'b01;
+            R = celeb_anim[1] ? 2'b11 : 2'b00; G = 2'b11; B = 2'b11;
         end else if (is_crown) begin
             R = 2'b11; G = 2'b11; B = 2'b00;
         end else if (on_finish_line) begin
@@ -236,21 +227,17 @@ module tt_um_vga_example (
             G = finish_check ? 2'b11 : 2'b00;
             B = finish_check ? 2'b11 : 2'b00;
         end else if (on_hud_bar) begin
-            R = (speed > 8'd10) ? 2'b00 : 2'b11;
+            R = (speed > 4'd9) ? 2'b00 : 2'b11;
             G = 2'b11;
-            B = (speed > 8'd10) ? 2'b11 : 2'b00;
+            B = (speed > 4'd9) ? 2'b11 : 2'b00;
         end else if (on_hud_box && (vpos == 10'd8 || vpos == 10'd20 || hpos == 10'd218 || hpos == 10'd422)) begin
             R = 2'b00; G = 2'b11; B = 2'b11;
         end else if (is_nitro_flame) begin
-            R = flame_anim[0] ? 2'b11 : 2'b00;
-            G = 2'b11;
-            B = 2'b11;
+            R = 2'b11; G = 2'b11; B = 2'b11;
         end else if (is_player_lights) begin
             R = 2'b11; G = 2'b11; B = 2'b01;
         end else if (is_player_brakes) begin
-            R = brake_pedal ? 2'b11 : 2'b10;
-            G = 2'b00;
-            B = 2'b00;
+            R = brake_pedal ? 2'b11 : 2'b10; G = 2'b00; B = 2'b00;
         end else if (is_player_wheels) begin
             R = 2'b00; G = 2'b00; B = 2'b00;
         end else if (is_player_glass) begin
