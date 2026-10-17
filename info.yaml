@@ -10,7 +10,7 @@ project:
   language:     "Verilog"
   clock_hz:     25175000
 
-  tiles: "1x2"
+  tiles: "1x1"
 
   top_module:  "tt_um_vga_example"
 
