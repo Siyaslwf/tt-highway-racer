@@ -1,4 +1,7 @@
 ---
+# Tiny Tapeout project information
+yaml_version: 6
+
 project:
   title:        "Retro Highway Racer"
   author:       "SIYAS"
@@ -15,30 +18,34 @@ project:
     - "project.v"
     - "hvsync_generator.v"
 
-  pinout:
-    ui[0]: "Gas / Nitro Boost"
-    ui[1]: "Brake"
-    ui[2]: "Steer Left"
-    ui[3]: "Steer Right"
-    ui[4]: "Unused"
-    ui[5]: "Unused"
-    ui[6]: "Unused"
-    ui[7]: "Transform Car/Bike"
+# Pinout definition
+pinout:
+  # Inputs
+  ui[0]: "Nitro Boost (Gas)"
+  ui[1]: "Brake"
+  ui[2]: "Steer Left"
+  ui[3]: "Steer Right"
+  ui[4]: "None"
+  ui[5]: "None"
+  ui[6]: "None"
+  ui[7]: "Transform Car/Bike"
 
-    uo[0]: "R1"
-    uo[1]: "G1"
-    uo[2]: "B1"
-    uo[3]: "vsync"
-    uo[4]: "R0"
-    uo[5]: "G0"
-    uo[6]: "B0"
-    uo[7]: "hsync"
+  # Outputs (TinyVGA standard pinout)
+  uo[0]: "R1"
+  uo[1]: "G1"
+  uo[2]: "B1"
+  uo[3]: "vsync"
+  uo[4]: "R0"
+  uo[5]: "G0"
+  uo[6]: "B0"
+  uo[7]: "hsync"
 
-    uio[0]: "None"
-    uio[1]: "None"
-    uio[2]: "None"
-    uio[3]: "None"
-    uio[4]: "None"
-    uio[5]: "None"
-    uio[6]: "None"
-    uio[7]: "None"
+  # Bidirectional pins
+  uio[0]: "None"
+  uio[1]: "None"
+  uio[2]: "None"
+  uio[3]: "None"
+  uio[4]: "None"
+  uio[5]: "None"
+  uio[6]: "None"
+  uio[7]: "None"
